@@ -69,7 +69,7 @@ export async function POST(request: Request) {
     const systemPrompt = buildSystemPrompt(conceptRow);
     const anthropic = getAnthropicClient();
     const result = await streamText({
-      model: anthropic.languageModel('claude-sonnet-4-20250514'),
+      model: anthropic.languageModel('claude-sonnet-4-5'),
       system: systemPrompt,
       messages: [{ role: 'user', content: userMessage }],
       allowSystemInMessages: false,

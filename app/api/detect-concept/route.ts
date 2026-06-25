@@ -24,7 +24,7 @@ export async function POST(request: Request) {
 
     const anthropic = getAnthropicClient();
     const result = await generateText({
-      model: anthropic.languageModel('claude-haiku-4-5-20251001'),
+      model: anthropic.languageModel('claude-sonnet-4-5'),
       system: 'You are a concise extractor. Return valid JSON only.',
       messages: [{ role: 'user', content: prompt }],
       allowSystemInMessages: false,
