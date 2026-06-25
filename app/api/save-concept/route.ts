@@ -35,7 +35,7 @@ export async function POST(request: Request) {
 
     const { error } = await supabase
       .from('concepts')
-      .upsert(payload, { onConflict: ['subject', 'concept'], returning: 'minimal' });
+      .upsert(payload, { onConflict: 'subject,concept' });
 
     if (error) {
       return NextResponse.json({ error: 'Supabase upsert failed.' }, { status: 500 });

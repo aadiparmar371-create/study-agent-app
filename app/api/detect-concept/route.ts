@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     const prompt = `Extract the subject and concept from the user's message. Return only a JSON object with exactly these two fields: subject and concept. If the message is not about studying a concept, return subject: '' and concept: ''.\n\nMessage: "${userMessage.replace(/"/g, '\\"')}"`;
 
     const result = await generateText({
-      model: anthropic.languageModel('claude-haiku-4-5-20251001'),
+      model: anthropic.languageModel('-haiku-4-5-20251001'),
       system: 'You are a concise extractor. Return valid JSON only.',
       messages: [{ role: 'user', content: prompt }],
       allowSystemInMessages: false,

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { generateText } from 'ai';
+import { streamText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createClient } from '@/lib/supabase';
 
@@ -65,16 +65,14 @@ export async function POST(request: Request) {
     }
 
     const systemPrompt = buildSystemPrompt(conceptRow);
-    const result = await generateText({
-      model: anthropic.languageModel('claude-sonnet-4-20250514'),
+    const result = await streamText({
+      model: anthropic.languageModel('claude-sonnet-4-5'),
       system: systemPrompt,
       messages: [{ role: 'user', content: userMessage }],
       allowSystemInMessages: false,
     });
 
-    const response = result.toTextStreamResponse({
-      headers: { 'content-type': 'text/plain; charset=utf-8' },
-    });
+    const response = result.toTextStreamResponse({ headers: { 'content-type': 'text/plain; charset=utf-8' } });
 
     const headers: Record<string, string> = {};
     response.headers.forEach((value, key) => {
