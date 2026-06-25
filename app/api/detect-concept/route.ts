@@ -2,12 +2,14 @@ import { NextResponse } from 'next/server';
 import { generateText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 
-const anthropicApiKey = process.env.ANTHROPIC_API_KEY ?? process.env.ANTHROPIC_AUTH_TOKEN;
-if (!anthropicApiKey) {
-  throw new Error('Missing ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN environment variable.');
-}
+function getAnthropicClient() {
+  const anthropicApiKey = process.env.ANTHROPIC_API_KEY ?? process.env.ANTHROPIC_AUTH_TOKEN;
+  if (!anthropicApiKey) {
+    throw new Error('Missing ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN environment variable.');
+  }
 
-const anthropic = createAnthropic({ apiKey: anthropicApiKey });
+  return createAnthropic({ apiKey: anthropicApiKey });
+}
 
 export async function POST(request: Request) {
   try {
@@ -20,8 +22,9 @@ export async function POST(request: Request) {
 
     const prompt = `Extract the subject and concept from the user's message. Return only a JSON object with exactly these two fields: subject and concept. If the message is not about studying a concept, return subject: '' and concept: ''.\n\nMessage: "${userMessage.replace(/"/g, '\\"')}"`;
 
+    const anthropic = getAnthropicClient();
     const result = await generateText({
-      model: anthropic.languageModel('-haiku-4-5-20251001'),
+      model: anthropic.languageModel('claude-haiku-4-5-20251001'),
       system: 'You are a concise extractor. Return valid JSON only.',
       messages: [{ role: 'user', content: prompt }],
       allowSystemInMessages: false,

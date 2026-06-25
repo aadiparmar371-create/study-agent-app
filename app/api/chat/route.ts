@@ -5,12 +5,14 @@ import { createClient } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
-const anthropicApiKey = process.env.ANTHROPIC_API_KEY ?? process.env.ANTHROPIC_AUTH_TOKEN;
-if (!anthropicApiKey) {
-  throw new Error('Missing ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN environment variable.');
-}
+function getAnthropicClient() {
+  const anthropicApiKey = process.env.ANTHROPIC_API_KEY ?? process.env.ANTHROPIC_AUTH_TOKEN;
+  if (!anthropicApiKey) {
+    throw new Error('Missing ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN environment variable.');
+  }
 
-const anthropic = createAnthropic({ apiKey: anthropicApiKey });
+  return createAnthropic({ apiKey: anthropicApiKey });
+}
 
 function buildSystemPrompt(row: {
   mastery_level?: string | null;
@@ -65,8 +67,9 @@ export async function POST(request: Request) {
     }
 
     const systemPrompt = buildSystemPrompt(conceptRow);
+    const anthropic = getAnthropicClient();
     const result = await streamText({
-      model: anthropic.languageModel('claude-sonnet-4-5'),
+      model: anthropic.languageModel('claude-sonnet-4-20250514'),
       system: systemPrompt,
       messages: [{ role: 'user', content: userMessage }],
       allowSystemInMessages: false,
