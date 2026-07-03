@@ -24,7 +24,7 @@ export async function POST(request: Request) {
 
     const anthropic = getAnthropicClient();
     const result = await generateText({
-      model: anthropic.languageModel('claude-sonnet-4-5'),
+      model: anthropic.languageModel('claude-haiku-4-5-20251001'),
       system: 'You are a concise extractor. Return valid JSON only.',
       messages: [{ role: 'user', content: prompt }],
       allowSystemInMessages: false,
@@ -34,17 +34,30 @@ export async function POST(request: Request) {
     let payload = { subject: '', concept: '' };
 
     try {
-      const parsed = JSON.parse(text.trim());
+      // Handle markdown code blocks
+      let jsonStr = text.trim();
+      if (jsonStr.startsWith('```json')) {
+        jsonStr = jsonStr.slice(7); // Remove ```json
+      } else if (jsonStr.startsWith('```')) {
+        jsonStr = jsonStr.slice(3); // Remove ```
+      }
+      if (jsonStr.endsWith('```')) {
+        jsonStr = jsonStr.slice(0, -3); // Remove trailing ```
+      }
+      jsonStr = jsonStr.trim();
+
+      const parsed = JSON.parse(jsonStr);
       if (typeof parsed === 'object' && parsed !== null) {
         payload.subject = typeof parsed.subject === 'string' ? parsed.subject : '';
         payload.concept = typeof parsed.concept === 'string' ? parsed.concept : '';
       }
-    } catch {
-      // Keep fallback payload if JSON parsing fails.
+    } catch (parseError) {
+      console.warn('JSON parse error in detect-concept:', parseError, 'Text was:', text);
     }
 
     return NextResponse.json(payload);
   } catch (error) {
+    console.error('Detect-concept error:', error);
     return NextResponse.json({ error: 'Request failed.' }, { status: 500 });
   }
 }

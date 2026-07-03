@@ -149,10 +149,16 @@ export default function Home() {
         assistantText += chunk;
         setMessages((prev) =>
           prev.map((message) =>
-            message.id === assistantId ? { ...message, text: assistantText } : message
+            message.id === assistantId ? { ...message, text: assistantText, isStreaming: true } : message
           )
         );
         scrollToBottom();
+      }
+
+      // Flush any remaining data from decoder
+      const finalChunk = decoder.decode();
+      if (finalChunk) {
+        assistantText += finalChunk;
       }
 
       setMessages((prev) =>
@@ -160,6 +166,7 @@ export default function Home() {
           message.id === assistantId
             ? {
                 ...message,
+                text: assistantText,
                 isStreaming: false,
                 saveable: Boolean(subject && concept),
               }
@@ -207,8 +214,25 @@ export default function Home() {
         body: JSON.stringify(payload),
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        throw new Error('Save failed');
+        // Check if setup is needed
+        if (data.setupUrl) {
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === messageId
+                ? { 
+                    ...msg, 
+                    saveStatus: 'error', 
+                    saveError: 'Click here to configure database' 
+                  }
+                : msg
+            )
+          );
+          return;
+        }
+        throw new Error(data.error || 'Save failed');
       }
 
       setMessages((prev) =>
@@ -220,7 +244,7 @@ export default function Home() {
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === messageId
-            ? { ...msg, saveStatus: 'error', saveError: 'Save failed.' }
+            ? { ...msg, saveStatus: 'error', saveError: error instanceof Error ? error.message : 'Save failed' }
             : msg
         )
       );
@@ -248,17 +272,30 @@ export default function Home() {
                 <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[80%] ${message.role === 'user' ? 'bg-slate-800 text-slate-100' : 'bg-slate-900 text-slate-100 border border-slate-700'} rounded-3xl px-5 py-4 shadow-lg shadow-black/20`}>
                     <div className="whitespace-pre-wrap break-words text-sm leading-7">{message.text || (message.isStreaming ? 'Streaming response...' : '')}</div>
-                    {message.role === 'assistant' && message.saveable && !message.isStreaming && (
+                    {message.role === 'assistant' && !message.isStreaming && (
                       <div className="mt-4 flex flex-col gap-2">
                         <button
                           onClick={() => handleSave(message.id)}
-                          disabled={message.saveStatus === 'saving' || message.saveStatus === 'saved'}
-                          className="inline-flex items-center justify-center rounded-full bg-sky-600 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-60"
+                          disabled={!message.saveable || message.saveStatus === 'saving' || message.saveStatus === 'saved'}
+                          title={message.saveable ? 'Save this concept' : 'No concept detected in this response'}
+                          className="inline-flex items-center justify-center rounded-full bg-sky-600 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-40"
                         >
-                          {message.saveStatus === 'saved' ? 'Saved' : 'Save progress'}
+                          {message.saveStatus === 'saved' ? '✓ Saved' : message.saveStatus === 'saving' ? 'Saving...' : 'Save progress'}
                         </button>
+                        {!message.saveable && (
+                          <p className="text-xs text-slate-400">💡 Tip: Ask about a specific concept to enable saving</p>
+                        )}
                         {message.saveStatus === 'error' && message.saveError ? (
-                          <p className="text-xs text-rose-300">{message.saveError}</p>
+                          <p className="text-xs text-rose-300">
+                            {message.saveError.includes('configure') ? (
+                              <>
+                                {message.saveError}:{' '}
+                                <a href="/setup" className="underline hover:text-rose-200">Go to setup →</a>
+                              </>
+                            ) : (
+                              message.saveError
+                            )}
+                          </p>
                         ) : null}
                       </div>
                     )}

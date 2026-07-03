@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 export async function POST(request: Request) {
   try {
@@ -18,7 +18,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'subject and concept are required.' }, { status: 400 });
     }
 
-    const supabase = createClient();
+    // Use service role key for admin access (bypasses RLS)
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.error('Missing Supabase credentials');
+      return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
+    }
+
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+    
     const now = new Date().toISOString();
     const payload = {
       subject,
@@ -33,16 +43,20 @@ export async function POST(request: Request) {
       last_updated: now,
     };
 
-    const { error } = await supabase
+    const { error: upsertError } = await supabase
       .from('concepts')
       .upsert(payload, { onConflict: 'subject,concept' });
 
-    if (error) {
-      return NextResponse.json({ error: 'Supabase upsert failed.' }, { status: 500 });
+    if (upsertError) {
+      console.error('Supabase upsert error:', upsertError);
+      return NextResponse.json({ error: `Save failed: ${upsertError.message}` }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: 'Request failed.' }, { status: 500 });
+    console.error('Save concept error:', error);
+    return NextResponse.json({ 
+      error: `Request failed: ${error instanceof Error ? error.message : 'Unknown error'}` 
+    }, { status: 500 });
   }
 }
